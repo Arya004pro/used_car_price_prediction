@@ -10,7 +10,7 @@ from data_cleaning import (
     load_data,
     basic_clean,
     filter_invalid_prices,
-    filter_invalid_mileage
+    filter_invalid_mileage,
 )
 
 DATA_PATH = "data/raw/autos.csv"
@@ -32,7 +32,7 @@ def train_model():
     rename_map = {
         "yearOfRegistration": "registration_year",
         "powerPS": "power_ps",
-        "kilometer": "odometer"
+        "kilometer": "odometer",
     }
     df = df.rename(columns=rename_map)
 
@@ -89,18 +89,23 @@ def train_model():
 
     print("Training model...")
     model = HistGradientBoostingRegressor(
-        max_depth=10,
-        learning_rate=0.08,
-        max_iter=300,
-        random_state=42
+        max_depth=10, learning_rate=0.08, max_iter=300, random_state=42
     )
 
     model.fit(X_train, y_train)
 
     preds = model.predict(X_test)
     mae = mean_absolute_error(np.expm1(y_test), np.expm1(preds))
-    print(f"MAE (EUR): {mae:.2f}")
 
+    # -----------------------------
+    # Save uncertainty (confidence)
+    # -----------------------------
+    errors = np.abs(np.expm1(y_test) - np.expm1(preds))
+    error_std = errors.std()
+
+    joblib.dump(error_std, "models/error_std.pkl")
+
+    print(f"MAE (EUR): {mae:.2f}")
     print("Saving artifacts...")
     joblib.dump(model, MODEL_PATH)
     joblib.dump(freq_maps, "models/frequency_maps.pkl")
