@@ -15,15 +15,14 @@ scaler = joblib.load("models/scaler.pkl")
 # Page config
 # -----------------------------
 st.set_page_config(
-    page_title="Used Car Price Prediction",
-    page_icon="🚗",
-    layout="centered"
+    page_title="Used Car Price Prediction", page_icon="🚗", layout="centered"
 )
 
 st.title("🚗 Used Car Price Predictor")
 st.caption("Realistic pricing • Scalable ML • Indian-friendly UI")
 
 st.divider()
+
 
 # -----------------------------
 # Indian currency formatter
@@ -42,6 +41,7 @@ def format_inr(amount):
         parts.insert(0, rest)
     return ",".join(parts) + "," + last3
 
+
 # -----------------------------
 # UI label → dataset value maps
 # -----------------------------
@@ -50,13 +50,10 @@ fuel_map = {
     "Diesel": "diesel",
     "CNG / LPG": "lpg",
     "Electric": "elektro",
-    "Hybrid": "hybrid"
+    "Hybrid": "hybrid",
 }
 
-gearbox_map = {
-    "Manual": "manuell",
-    "Automatic": "automatik"
-}
+gearbox_map = {"Manual": "manuell", "Automatic": "automatik"}
 
 vehicle_type_map = {
     "Sedan": "limousine",
@@ -65,7 +62,7 @@ vehicle_type_map = {
     "Station Wagon": "kombi",
     "Coupe": "coupe",
     "Convertible": "cabrio",
-    "Other": "andere"
+    "Other": "andere",
 }
 
 # -----------------------------
@@ -74,32 +71,17 @@ vehicle_type_map = {
 col1, col2 = st.columns(2)
 
 with col1:
-    brand = st.selectbox(
-        "Brand",
-        sorted(freq_maps["brand"].index)
-    )
+    brand = st.selectbox("Brand", sorted(freq_maps["brand"].index))
 
-    vehicle_type_label = st.selectbox(
-        "Vehicle Type",
-        list(vehicle_type_map.keys())
-    )
+    vehicle_type_label = st.selectbox("Vehicle Type", list(vehicle_type_map.keys()))
 
-    fuel_label = st.selectbox(
-        "Fuel Type",
-        list(fuel_map.keys())
-    )
+    fuel_label = st.selectbox("Fuel Type", list(fuel_map.keys()))
 
-    gearbox_label = st.selectbox(
-        "Gearbox",
-        list(gearbox_map.keys())
-    )
+    gearbox_label = st.selectbox("Gearbox", list(gearbox_map.keys()))
 
 with col2:
     registration_year = st.slider(
-        "Registration Year",
-        min_value=1990,
-        max_value=2025,
-        value=2016
+        "Registration Year", min_value=1990, max_value=2025, value=2016
     )
 
     power_ps = st.slider(
@@ -108,15 +90,11 @@ with col2:
         max_value=500,
         value=120,
         step=10,
-        help="PS (Pferdestärke) is a European unit similar to horsepower"
+        help="PS (Pferdestärke) is a European unit similar to horsepower",
     )
 
     odometer = st.slider(
-        "Mileage (km)",
-        min_value=0,
-        max_value=300000,
-        value=80000,
-        step=5000
+        "Mileage (km)", min_value=0, max_value=300000, value=80000, step=5000
     )
 
 st.divider()
@@ -125,17 +103,20 @@ st.divider()
 # Prediction
 # -----------------------------
 if st.button("🔮 Predict Price", use_container_width=True):
-
     # Build raw input
-    input_df = pd.DataFrame([{
-        "brand": brand,
-        "vehicleType": vehicle_type_map[vehicle_type_label],
-        "fuelType": fuel_map[fuel_label],
-        "gearbox": gearbox_map[gearbox_label],
-        "registration_year": registration_year,
-        "power_ps": power_ps,
-        "odometer": odometer
-    }])
+    input_df = pd.DataFrame(
+        [
+            {
+                "brand": brand,
+                "vehicleType": vehicle_type_map[vehicle_type_label],
+                "fuelType": fuel_map[fuel_label],
+                "gearbox": gearbox_map[gearbox_label],
+                "registration_year": registration_year,
+                "power_ps": power_ps,
+                "odometer": odometer,
+            }
+        ]
+    )
 
     # -----------------------------
     # Apply frequency encoding
