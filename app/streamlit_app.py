@@ -3,13 +3,19 @@ import pandas as pd
 import joblib
 import numpy as np
 
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
 # -----------------------------
 # Load model artifacts
 # -----------------------------
-model = joblib.load("models/car_price_model.pkl")
-freq_maps = joblib.load("models/frequency_maps.pkl")
-feature_columns = joblib.load("models/feature_columns.pkl")
-scaler = joblib.load("models/scaler.pkl")
+model = joblib.load(BASE_DIR / "models" / "car_price_model.pkl")
+freq_maps = joblib.load(BASE_DIR / "models" / "frequency_maps.pkl")
+feature_columns = joblib.load(BASE_DIR / "models" / "feature_columns.pkl")
+scaler = joblib.load(BASE_DIR / "models" / "scaler.pkl")
+
 
 # -----------------------------
 # Page config
