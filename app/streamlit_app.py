@@ -15,6 +15,7 @@ model = joblib.load(BASE_DIR / "models" / "car_price_model.pkl")
 freq_maps = joblib.load(BASE_DIR / "models" / "frequency_maps.pkl")
 feature_columns = joblib.load(BASE_DIR / "models" / "feature_columns.pkl")
 scaler = joblib.load(BASE_DIR / "models" / "scaler.pkl")
+error_std = joblib.load(BASE_DIR / "models" / "error_std.pkl")
 
 
 # -----------------------------
@@ -154,6 +155,18 @@ if st.button("🔮 Predict Price", use_container_width=True):
     price_eur = np.expm1(log_price)
     price_inr = int(price_eur * 90)
 
+    # Confidence range
+    low_eur = max(0, price_eur - error_std)
+    high_eur = price_eur + error_std
+
+    low_inr = int(low_eur * 90)
+    high_inr = int(high_eur * 90)
+
     st.success(
         f"💰 Estimated Price: € {int(price_eur):,}  (≈ ₹ {format_inr(price_inr)})"
+    )
+
+    st.info(
+        f"📊 Likely price range: € {int(low_eur):,} – € {int(high_eur):,} "
+        f"(≈ ₹ {format_inr(low_inr)} – ₹ {format_inr(high_inr)})"
     )
