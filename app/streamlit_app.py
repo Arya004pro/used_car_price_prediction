@@ -5,7 +5,7 @@ import numpy as np
 from pathlib import Path
 
 # -------------------------------------------------
-# Resolve base directory (works locally + cloud)
+# Resolve base directory
 # -------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -18,6 +18,10 @@ feature_columns = joblib.load(BASE_DIR / "models" / "feature_columns.pkl")
 scaler = joblib.load(BASE_DIR / "models" / "scaler.pkl")
 error_std = joblib.load(BASE_DIR / "models" / "error_std.pkl")
 
+# V3 brand encoders
+brand_target_mean = joblib.load(BASE_DIR / "models" / "brand_target_mean.pkl")
+global_price_mean = joblib.load(BASE_DIR / "models" / "global_price_mean.pkl")
+
 # -------------------------------------------------
 # Page config
 # -------------------------------------------------
@@ -26,7 +30,7 @@ st.set_page_config(
 )
 
 st.title("🚗 Used Car Price Predictor")
-st.caption("Accuracy V2 • Usage-aware pricing • Indian-friendly UI")
+st.caption("Accuracy V3 • Brand-aware pricing • Usage-sensitive")
 st.divider()
 
 
@@ -80,7 +84,7 @@ vehicle_type_map = {
 col1, col2 = st.columns(2)
 
 with col1:
-    brand = st.selectbox("Brand", sorted(freq_maps["brand"].index))
+    brand = st.selectbox("Brand", sorted(brand_target_mean.index))
 
     vehicle_type_label = st.selectbox("Vehicle Type", list(vehicle_type_map.keys()))
 
@@ -113,22 +117,25 @@ st.divider()
 # -------------------------------------------------
 if st.button("🔮 Predict Price", use_container_width=True):
     # -----------------------------
-    # Accuracy V2 feature engineering
+    # Accuracy V2 + V3 features
     # -----------------------------
     CURRENT_YEAR = 2025
 
-    car_age = CURRENT_YEAR - registration_year
-    car_age = max(0, car_age)
-
+    car_age = max(0, CURRENT_YEAR - registration_year)
     km_per_year = odometer / (car_age + 1)
 
     # -----------------------------
-    # Build raw input (MATCHES TRAINING)
+    # Brand target encoding (V3)
+    # -----------------------------
+    brand_encoded = brand_target_mean.get(brand, global_price_mean)
+
+    # -----------------------------
+    # Build input (MATCHES TRAINING)
     # -----------------------------
     input_df = pd.DataFrame(
         [
             {
-                "brand": brand,
+                "brand": brand_encoded,
                 "vehicleType": vehicle_type_map[vehicle_type_label],
                 "fuelType": fuel_map[fuel_label],
                 "gearbox": gearbox_map[gearbox_label],
@@ -141,26 +148,26 @@ if st.button("🔮 Predict Price", use_container_width=True):
     )
 
     # -----------------------------
-    # Apply frequency encoding
+    # Frequency encode remaining categoricals
     # -----------------------------
     for col, fmap in freq_maps.items():
         if col in input_df.columns:
             input_df[col] = input_df[col].map(fmap).fillna(0)
 
     # -----------------------------
-    # Scale numeric features (V2)
+    # Scale numeric features
     # -----------------------------
+    # Scale only the columns the scaler was trained on
     numeric_cols = ["power_ps", "odometer", "car_age", "km_per_year"]
     input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
 
     # -----------------------------
-    # Add missing columns (schema safety)
+    # Schema safety
     # -----------------------------
     for col in feature_columns:
         if col not in input_df.columns:
             input_df[col] = 0
 
-    # Ensure correct column order
     input_df = input_df[feature_columns]
 
     # -----------------------------
@@ -171,15 +178,11 @@ if st.button("🔮 Predict Price", use_container_width=True):
     price_inr = int(price_eur * 90)
 
     # -----------------------------
-    # Confidence range (realistic)
+    # Confidence range (no zero floor)
     # -----------------------------
-    MAX_DOWNSIDE_PCT = 0.30  # 30% lower bound
+    MAX_DOWNSIDE_PCT = 0.30
 
-    low_eur = max(
-        price_eur * (1 - MAX_DOWNSIDE_PCT),
-        price_eur - error_std
-    )
-
+    low_eur = max(price_eur * (1 - MAX_DOWNSIDE_PCT), price_eur - error_std)
     high_eur = price_eur + error_std
 
     low_inr = int(low_eur * 90)
