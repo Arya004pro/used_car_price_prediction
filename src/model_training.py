@@ -38,6 +38,14 @@ def train_model():
 
     print("Sampling data...")
     df = df.sample(n=100000, random_state=42)
+    # -----------------------------
+    CURRENT_YEAR = 2025
+
+    df["car_age"] = CURRENT_YEAR - df["registration_year"]
+    df["car_age"] = df["car_age"].clip(lower=0)
+
+    df["km_per_year"] = df["odometer"] / (df["car_age"] + 1)
+
 
     # Drop high-cardinality column
     if "model" in df.columns:
@@ -67,7 +75,7 @@ def train_model():
     # -----------------------------
     # SCALE NUMERIC FEATURES
     # -----------------------------
-    numeric_cols = ["registration_year", "power_ps", "odometer"]
+    numeric_cols = ["power_ps", "odometer", "car_age", "km_per_year"]
 
     scaler = StandardScaler()
     X_encoded[numeric_cols] = scaler.fit_transform(X_encoded[numeric_cols])
