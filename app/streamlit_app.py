@@ -2,38 +2,37 @@ import streamlit as st
 import pandas as pd
 import joblib
 import numpy as np
-
 from pathlib import Path
 
+# -------------------------------------------------
+# Resolve base directory (works locally + cloud)
+# -------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# -----------------------------
+# -------------------------------------------------
 # Load model artifacts
-# -----------------------------
+# -------------------------------------------------
 model = joblib.load(BASE_DIR / "models" / "car_price_model.pkl")
 freq_maps = joblib.load(BASE_DIR / "models" / "frequency_maps.pkl")
 feature_columns = joblib.load(BASE_DIR / "models" / "feature_columns.pkl")
 scaler = joblib.load(BASE_DIR / "models" / "scaler.pkl")
 error_std = joblib.load(BASE_DIR / "models" / "error_std.pkl")
 
-
-# -----------------------------
+# -------------------------------------------------
 # Page config
-# -----------------------------
+# -------------------------------------------------
 st.set_page_config(
     page_title="Used Car Price Prediction", page_icon="🚗", layout="centered"
 )
 
 st.title("🚗 Used Car Price Predictor")
-st.caption("Realistic pricing • Scalable ML • Indian-friendly UI")
-
+st.caption("Accuracy V2 • Usage-aware pricing • Indian-friendly UI")
 st.divider()
 
 
-# -----------------------------
+# -------------------------------------------------
 # Indian currency formatter
-# -----------------------------
+# -------------------------------------------------
 def format_inr(amount):
     s = str(int(amount))
     if len(s) <= 3:
@@ -49,9 +48,9 @@ def format_inr(amount):
     return ",".join(parts) + "," + last3
 
 
-# -----------------------------
+# -------------------------------------------------
 # UI label → dataset value maps
-# -----------------------------
+# -------------------------------------------------
 fuel_map = {
     "Petrol": "benzin",
     "Diesel": "diesel",
@@ -60,7 +59,10 @@ fuel_map = {
     "Hybrid": "hybrid",
 }
 
-gearbox_map = {"Manual": "manuell", "Automatic": "automatik"}
+gearbox_map = {
+    "Manual": "manuell",
+    "Automatic": "automatik",
+}
 
 vehicle_type_map = {
     "Sedan": "limousine",
@@ -72,9 +74,9 @@ vehicle_type_map = {
     "Other": "andere",
 }
 
-# -----------------------------
+# -------------------------------------------------
 # UI Inputs
-# -----------------------------
+# -------------------------------------------------
 col1, col2 = st.columns(2)
 
 with col1:
@@ -92,7 +94,7 @@ with col2:
     )
 
     power_ps = st.slider(
-        "Engine Power (PS)  — approx. Horsepower",
+        "Engine Power (PS) — approx. Horsepower",
         min_value=50,
         max_value=500,
         value=120,
@@ -106,11 +108,23 @@ with col2:
 
 st.divider()
 
-# -----------------------------
+# -------------------------------------------------
 # Prediction
-# -----------------------------
+# -------------------------------------------------
 if st.button("🔮 Predict Price", use_container_width=True):
-    # Build raw input
+    # -----------------------------
+    # Accuracy V2 feature engineering
+    # -----------------------------
+    CURRENT_YEAR = 2025
+
+    car_age = CURRENT_YEAR - registration_year
+    car_age = max(0, car_age)
+
+    km_per_year = odometer / (car_age + 1)
+
+    # -----------------------------
+    # Build raw input (MATCHES TRAINING)
+    # -----------------------------
     input_df = pd.DataFrame(
         [
             {
@@ -118,9 +132,10 @@ if st.button("🔮 Predict Price", use_container_width=True):
                 "vehicleType": vehicle_type_map[vehicle_type_label],
                 "fuelType": fuel_map[fuel_label],
                 "gearbox": gearbox_map[gearbox_label],
-                "registration_year": registration_year,
                 "power_ps": power_ps,
                 "odometer": odometer,
+                "car_age": car_age,
+                "km_per_year": km_per_year,
             }
         ]
     )
@@ -133,13 +148,13 @@ if st.button("🔮 Predict Price", use_container_width=True):
             input_df[col] = input_df[col].map(fmap).fillna(0)
 
     # -----------------------------
-    # Scale numeric features
+    # Scale numeric features (V2)
     # -----------------------------
-    numeric_cols = ["registration_year", "power_ps", "odometer"]
+    numeric_cols = ["power_ps", "odometer", "car_age", "km_per_year"]
     input_df[numeric_cols] = scaler.transform(input_df[numeric_cols])
 
     # -----------------------------
-    # Add missing columns
+    # Add missing columns (schema safety)
     # -----------------------------
     for col in feature_columns:
         if col not in input_df.columns:
@@ -155,13 +170,18 @@ if st.button("🔮 Predict Price", use_container_width=True):
     price_eur = np.expm1(log_price)
     price_inr = int(price_eur * 90)
 
+    # -----------------------------
     # Confidence range
+    # -----------------------------
     low_eur = max(0, price_eur - error_std)
     high_eur = price_eur + error_std
 
     low_inr = int(low_eur * 90)
     high_inr = int(high_eur * 90)
 
+    # -----------------------------
+    # Display
+    # -----------------------------
     st.success(
         f"💰 Estimated Price: € {int(price_eur):,}  (≈ ₹ {format_inr(price_inr)})"
     )
