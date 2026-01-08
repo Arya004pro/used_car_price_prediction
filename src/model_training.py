@@ -1,6 +1,7 @@
 import joblib
 import numpy as np
 
+
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
@@ -46,7 +47,6 @@ def train_model():
 
     df["km_per_year"] = df["odometer"] / (df["car_age"] + 1)
 
-
     # Drop high-cardinality column
     if "model" in df.columns:
         df = df.drop(columns=["model"])
@@ -60,6 +60,21 @@ def train_model():
     y = np.log1p(df["price"])
 
     # -----------------------------
+    # Target encoding for BRAND
+    # -----------------------------
+    brand_target_mean = (
+    X[["brand"]]
+    .join(y)
+    .groupby("brand")[y.name]
+    .mean()
+    )
+
+    global_price_mean = y.mean()
+
+    # Replace brand with target-encoded values
+    X["brand"] = X["brand"].map(brand_target_mean).fillna(global_price_mean)
+
+    # -----------------------------
     # FREQUENCY ENCODING
     # -----------------------------
     print("Applying frequency encoding...")
@@ -67,7 +82,7 @@ def train_model():
     X_encoded = X.copy()
 
     for col in X.columns:
-        if X[col].dtype == "object":
+        if X[col].dtype == "object" and col != "brand":
             freq = X[col].value_counts(normalize=True)
             freq_maps[col] = freq
             X_encoded[col] = X[col].map(freq)
@@ -119,6 +134,8 @@ def train_model():
     joblib.dump(freq_maps, "models/frequency_maps.pkl")
     joblib.dump(feature_columns, "models/feature_columns.pkl")
     joblib.dump(scaler, "models/scaler.pkl")
+    joblib.dump(brand_target_mean, "models/brand_target_mean.pkl")
+    joblib.dump(global_price_mean, "models/global_price_mean.pkl")
 
     print("✅ Model, encoders, scaler, and schema saved successfully.")
 
