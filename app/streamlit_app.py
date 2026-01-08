@@ -171,9 +171,15 @@ if st.button("🔮 Predict Price", use_container_width=True):
     price_inr = int(price_eur * 90)
 
     # -----------------------------
-    # Confidence range
+    # Confidence range (realistic)
     # -----------------------------
-    low_eur = max(0, price_eur - error_std)
+    MAX_DOWNSIDE_PCT = 0.30  # 30% lower bound
+
+    low_eur = max(
+        price_eur * (1 - MAX_DOWNSIDE_PCT),
+        price_eur - error_std
+    )
+
     high_eur = price_eur + error_std
 
     low_inr = int(low_eur * 90)
